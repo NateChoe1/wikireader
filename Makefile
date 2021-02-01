@@ -1,5 +1,5 @@
 CC=gcc
-COMMON=-O3
+COMMON=-O3 -lncurses
 CFLAGS=${COMMON}
 
 wikireader: src/reader.c

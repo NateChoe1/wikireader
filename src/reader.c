@@ -19,6 +19,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <curses.h>
 #include <stdio.h>
 
 unsigned long long searchString(FILE *file, char searchText[]) {
@@ -70,6 +71,22 @@ void createLookup(FILE *data, FILE *lookup) {
 	fclose(lookup);
 }
 
+void displayScreen(unsigned long long lookupPosition, unsigned long long cursorPosition, FILE *lookup) {
+	fseek(lookup, sizeof(unsigned long long) + 1, SEEK_SET);
+	//            [8 bytes of lookup position][the name of the article]\0
+	//            ^- lookupPosition           ^- what we want
+	for (int i = 0; i < LINES; i++) {
+		for (int j = 0; j < COLS; j++) {
+			char c = fgetc(lookup);
+			if (c == 0) {
+				fseek(lookup, sizeof(unsigned long long) + 1, SEEK_CUR);
+				break;
+			}
+			mvaddch(i, j, c);
+		}
+	}
+}
+
 int main(int argc, char *argv[]) {
 	FILE *data = NULL;
 	FILE *lookup = NULL;
@@ -95,13 +112,26 @@ int main(int argc, char *argv[]) {
 		if (strcmp(argv[i], "-l") == 0)
 			lookupIndex = i;
 	}
+	//Parse command line arguments
 
 	if (access(argv[lookupIndex+1], F_OK) != 0) {
 		lookup = fopen(argv[lookupIndex+1], "w");
 		createLookup(data, lookup);
 	}
-
 	//At this point, arguments have been parsed and a lookup file exists.
+
+	lookup = fopen(argv[lookupIndex+1], "r");
+	unsigned long long lookupPosition = 0;
+	initscr();
+	cbreak();
+	noecho();
+	displayScreen(0, 0, lookup);
+	refresh();
+	while (getch() != '`') {
+		displayScreen(0, 0, lookup);
+		refresh();
+	}
+	endwin();
 
 	return 0;
 }
