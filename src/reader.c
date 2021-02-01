@@ -36,21 +36,7 @@ unsigned long long searchString(FILE *file, char searchText[]) {
 	return ftell(file);
 }
 
-int main(int argc, char *argv[]) {
-	FILE *data = NULL;
-	FILE *lookup = NULL;
-	int lookupIndex;
-	for (int i = 0; i < argc; i++) {
-		if (strcmp(argv[i], "-d") == 0)
-			data = fopen(argv[i+1], "r");
-		if (strcmp(argv[i], "-l") == 0) {
-			lookupIndex = i;
-			if (access(argv[i+1], F_OK) == 0)
-				goto lookupMade;
-			lookup = fopen(argv[i+1], "w");
-		}
-	}
-
+void createLookup(FILE *data, FILE *lookup) {
 	unsigned long long pageCount = 0;
 	while (1) {
 		unsigned long long currentPosition = searchString(data, "<page>");
@@ -82,8 +68,40 @@ int main(int argc, char *argv[]) {
 	}
 	printf("Loaded all %lu pages into the lookup table.\n", pageCount);
 	fclose(lookup);
+}
 
-	lookupMade:
+int main(int argc, char *argv[]) {
+	FILE *data = NULL;
+	FILE *lookup = NULL;
+	int lookupIndex;
+	for (int i = 0; i < argc; i++) {
+		if (strcmp(argv[i], "--help") == 0 | strcmp(argv[i], "-h") == 0) {
+			printf(
+				"%s%s%s%s%s%s%s",
+				"Arguments for wikireader:\n\n",
+
+				"--help       -h        Show this screen\n",
+				"             -d [FILE] Select the database download\n",
+				"             -l [FILE] Select the lookup table for the database download.\n",
+				"                       If the lookup table file doesn't exist, one is created.\n\n",
+				
+				"                       Please note that the -d and -l flags must be specified,\n",
+				"                       if they aren't, you get a segmentation fault.\n"
+			);
+			return 0;
+		}
+		if (strcmp(argv[i], "-d") == 0)
+			data = fopen(argv[i+1], "r");
+		if (strcmp(argv[i], "-l") == 0)
+			lookupIndex = i;
+	}
+
+	if (access(argv[lookupIndex+1], F_OK) != 0) {
+		lookup = fopen(argv[lookupIndex+1], "w");
+		createLookup(data, lookup);
+	}
+
+	//At this point, arguments have been parsed and a lookup file exists.
 
 	return 0;
 }
