@@ -24,21 +24,15 @@
 unsigned long long searchString(FILE *file, char searchText[]) {
 	int stringLength = strlen(searchText);
 	char buffer[stringLength];
-	memset(buffer, 0, stringLength * sizeof(char));
-	char foundString = 1;
+	for (int i = 0; i < stringLength; i++) buffer[i] = 0;
 	while (strcmp(searchText, buffer)) {
 		for (int i = 0; i < stringLength-1; i++)
 			buffer[i] = buffer[i+1];
 		char c = fgetc(file);
+		if (c == EOF)
+			return -1;
 		buffer[stringLength - 1] = c;
-		if (c == EOF) {
-			foundString = 0;
-			break;
-		}
 	}
-	if (foundString == 0)
-		return -1;
-	fflush(file);
 	return ftell(file);
 }
 
@@ -62,7 +56,6 @@ int main(int argc, char *argv[]) {
 		unsigned long long currentPosition = searchString(data, "<page>");
 		if (currentPosition == -1)
 			break;
-		fseek(data, currentPosition, SEEK_SET);
 		pageCount++;
 
 		char positionArray[sizeof(currentPosition)];
@@ -75,32 +68,22 @@ int main(int argc, char *argv[]) {
 
 		for (int i = 0; i < sizeof(currentPosition); i++)
 			fputc(positionArray[i], lookup);
+		searchString(data, "<title>");
+		fputc('\0', lookup);
+		char c = fgetc(data);
+		while (c != '<') {
+			fputc(c, lookup);
+			c = fgetc(data);
+		}
+		fputc('\0', lookup);
 
 		if (pageCount % 1000 == 0)
-			printf("%d pages have been loaded into the lookup table with the last space being %lu\n", pageCount, currentPosition);
+			printf("%lu pages have been loaded into the lookup table with the last space being %lu\n", pageCount, currentPosition);
 	}
-	printf("Loaded all %d pages into the lookup table.\n", pageCount);
+	printf("Loaded all %lu pages into the lookup table.\n", pageCount);
 	fclose(lookup);
 
 	lookupMade:
-	lookup = fopen(argv[lookupIndex+1], "r");
-	fseek(lookup, 0L, SEEK_END);
-	unsigned long long articleCount = ftell(lookup) / sizeof(unsigned long long);
-	fseek(lookup, 0, SEEK_SET);
-	for (int i = 0; i < articleCount; i++) {
-		char n[sizeof(unsigned long long)];
-		for (int j = 0; j < sizeof(unsigned long long); j++)
-			n[j] = fgetc(lookup);
-		unsigned long long pos = * (unsigned long long *) &n;//This is stolen from the fast inverse square root function in Quake.
-		fseek(data, pos, SEEK_SET);
-		pos = searchString(data, "<title>");
-		char c = fgetc(data);
-		while (c != '<') {
-			printf("%c", c);
-			c = fgetc(data);
-		}
-		printf("\n");
-	}
 
 	return 0;
 }
