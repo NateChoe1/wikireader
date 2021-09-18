@@ -149,6 +149,7 @@ noRedirects:
 	}
 wroteArticle:
 
+	fflush(content);
 	showPage(content);
 	fclose(content);
 
