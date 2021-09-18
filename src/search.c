@@ -14,6 +14,20 @@
 #include "lookup.h"
 
 #define MAX_SEARCH 257
+#define MAX_SPECIAL 10
+
+typedef struct {
+	char *verbose;
+	char value;
+} Escape;
+
+Escape escapes[] = {
+	{"amp", '&'},
+	{"semi", ';'},
+	{"quot", '"'},
+	{"lt", '<'},
+	{"gt", '>'},
+};
 
 static off_t searchForArticle(FILE *database, FILE *index, char *search) {
 	fseek(index, 0, SEEK_END);
@@ -122,11 +136,26 @@ noRedirects:
 
 	fseek(database, location, SEEK_SET);
 	off_t articleLocation = searchForTag(database, "text");
-	int c = fgetc(database);
-	while (c != '<' && c != EOF) {
-		fputc(c, content);
-		c = fgetc(database);
+	for (;;) {
+		int c = fgetc(database);
+		switch (c) {
+			case '<': case EOF:
+				goto wroteArticle;
+			case '&':
+				char special[MAX_SPECIAL];
+				readTillChar(database, special, MAX_SPECIAL, ';', false);
+				for (int i = 0; i < sizeof(escapes) / sizeof(escapes[0]); i++)
+					if (strcmp(special, escapes[i].verbose) == 0) {
+						fputc(escapes[i].value, content);
+						break;
+					}
+				break;
+			default:
+				fputc(c, content);
+				break;
+		}
 	}
+wroteArticle:
 
 	showPage(content);
 	fclose(content);
