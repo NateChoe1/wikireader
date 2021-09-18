@@ -50,6 +50,8 @@ off_t searchForTag(FILE *database, char *tag) {
 	for (;;) {
 		off_t possibility;
 		char *buffer = nextTag(database, &possibility);
+		if (buffer == NULL)
+			return -1;
 		if (strcmp(buffer, tag) == 0) {
 			free(buffer);
 			return possibility;
@@ -66,9 +68,6 @@ static int comparePage(Page *page1, Page *page2) {
 
 FILE *createLookup(FILE *database, char *path) {
 	fseek(database, 0, SEEK_SET);
-	FILE *lookup = fopen(path, "w+");
-	if (lookup == NULL)
-		return NULL;
 
 	long allocatedPages = 2000000;
 	long pagesSeen;
@@ -87,18 +86,8 @@ FILE *createLookup(FILE *database, char *path) {
 		pages[pagesSeen].offset = pos;
 
 		searchForTag(database, "title");
-		for (int i = 0; i < TITLE_MAX_LENGTH; i++) {
-			int c = fgetc(database);
-			if (c == '<') {
-				pages[pagesSeen].title[i] = '\0';
-				break;
-			}
-			if (c == EOF) {
-				free(pages);
-				return NULL;
-			}
-			pages[pagesSeen].title[i] = c;
-		}
+		readTillChar(database, pages[pagesSeen].title, TITLE_MAX_LENGTH,
+				'<', false);
 
 		if (pagesSeen % 100000 == 0) {
 			char buffer[STATUS_MAX_LENGTH];
@@ -118,6 +107,10 @@ FILE *createLookup(FILE *database, char *path) {
 #pragma GCC diagnostic ignored "-Wincompatible-pointer-types"
 	qsort(pages, pagesSeen, sizeof(pages[0]), comparePage);
 #pragma GCC diagnostic pop
+
+	FILE *lookup = fopen(path, "w+");
+	if (lookup == NULL)
+		return NULL;
 
 	for (long i = 0; i < pagesSeen; i++)
 		fwrite(&pages[i].offset, sizeof(off_t), 1, lookup);
