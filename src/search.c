@@ -1,14 +1,9 @@
+#include <fcntl.h>
 #include <curses.h>
 #include <string.h>
 #include <stdlib.h>
-
-#ifdef __unix__
-#include <fcntl.h>
 #include <unistd.h>
 #include <sys/wait.h>
-#else
-#error "Unsupported OS (Only unix is supported for now)"
-#endif
 
 #include "search.h"
 #include "lookup.h"
@@ -67,8 +62,6 @@ static off_t searchForArticle(FILE *database, FILE *index, char *search) {
 }
 
 char showPage(FILE *content) {
-	//TODO: Make this function OS independent.
-#ifdef __unix__
 	int pid = fork();
 	if (pid == 0) {
 		int fd = fileno(content);
@@ -80,7 +73,6 @@ char showPage(FILE *content) {
 		wait(&pid);
 	else
 		return 1;
-#endif
 
 	cbreak();
 	noecho();
