@@ -1,0 +1,10 @@
+To compile, simply run the "make" command. This program should (!) run on all
+UNIX systems with the less command and ncurses.
+
+To run it, just type
+
+wikireader [wikipedia database download] [index]
+
+You can get the database download at
+https://meta.wikimedia.org/wiki/Data_dump_torrents#English_Wikipedia
+and you can create an index in wikireader.
