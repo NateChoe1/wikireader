@@ -63,7 +63,7 @@ char showPage(FILE *content) {
 	else
 		return 1;
 
-	cbreak();
+	raw();
 	noecho();
 	curs_set(0);
 	keypad(stdscr, true);

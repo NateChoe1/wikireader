@@ -1,12 +1,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <curses.h>
-#include <sys/signal.h>
 
 #include "lookup.h"
 #include "search.h"
-
-#define SPECIAL_PAIR 1
+#include "curses.h"
 
 #define SEARCH_WIN 0
 #define CREATE_WIN 1
@@ -64,10 +62,6 @@ int main(int argc, char **argv) {
 		puts("Usage: wikireader [database file] [index file]");
 		exit(EXIT_SUCCESS);
 	}
-	if (signal(SIGINT, exitCleanly) == SIG_ERR) {
-		fprintf(stderr, "Couldn't trap exit signal\n");
-		exit(EXIT_FAILURE);
-	}
 
 	FILE *database = fopen(argv[1], "r");
 	FILE *index = fopen(argv[2], "r");
@@ -77,7 +71,7 @@ int main(int argc, char **argv) {
 
 	initscr();
 	start_color();
-	cbreak();
+	raw();
 	noecho();
 	curs_set(0);
 	keypad(stdscr, true);
@@ -119,8 +113,12 @@ int main(int argc, char **argv) {
 						break;
 					case SEARCH_WIN:
 						enterSearch(database, index);
+						break;
 				}
 				break;
+			case 'c' & 31:
+				endwin();
+				exit(EXIT_SUCCESS);
 		}
 		redrawSelection(options, selectedOption);
 	}

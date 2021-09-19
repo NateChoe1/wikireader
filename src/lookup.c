@@ -4,8 +4,8 @@
 #include <string.h>
 #include <stdlib.h>
 
-#include "lookup.h"
 #include "xml.h"
+#include "lookup.h"
 
 #define STATUS_MAX_LENGTH 45
 
