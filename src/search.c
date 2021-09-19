@@ -7,25 +7,11 @@
 #include <unistd.h>
 #include <sys/wait.h>
 
+#include "xml.h"
 #include "search.h"
 #include "lookup.h"
 
 #define MAX_SEARCH 257
-#define MAX_SPECIAL 10
-
-typedef struct {
-	char *verbose;
-	char value;
-} Escape;
-
-Escape escapes[] = {
-	{"amp", '&'},
-	{"semi", ';'},
-	{"quot", '"'},
-	{"lt", '<'},
-	{"gt", '>'},
-	{"nbsp", ' '},
-};
 
 static off_t searchForArticle(FILE *database, FILE *index, char *search) {
 	fseek(index, 0, SEEK_END);
@@ -59,8 +45,8 @@ static off_t searchForArticle(FILE *database, FILE *index, char *search) {
 		//binary search
 		if (high <= low)
 			return -1;
-		if (high - 1 == low)
-			return low;
+		if (high - 1 <= low)
+			return -1;
 	}
 }
 
@@ -84,27 +70,9 @@ char showPage(FILE *content) {
 }
 
 void sanitize(FILE *input, FILE *output) {
-	for (;;) {
-		int c = fgetc(input);
-		switch (c) {
-			case '<': case EOF:
-				fflush(output);
-				return;
-			case '&':
-				char special[MAX_SPECIAL];
-				readTillChar(input, special, MAX_SPECIAL, ';', false);
-				for (int i = 0; i < sizeof(escapes) / sizeof(escapes[0]); i++) {
-					if (strcmp(special, escapes[i].verbose) == 0) {
-						fputc(escapes[i].value, output);
-						break;
-					}
-				}
-				break;
-			default:
-				fputc(c, output);
-				break;
-		}
-	}
+	sanitizeAmpersands(input, output);
+	//This useless function call is to allow for extra things like math to be
+	//added without having to do more organization later.
 }
 
 char enterSearch(FILE *database, FILE *index) {
@@ -118,8 +86,11 @@ char enterSearch(FILE *database, FILE *index) {
 	mvgetnstr(LINES / 3 * 2, COLS / 3, search, MAX_SEARCH - 1);
 
 	off_t location = searchForArticle(database, index, search);
-	if (location == -1)
+	if (location == -1) {
+		noecho();
+		curs_set(0);
 		return 1;
+	}
 	for (;;) {
 		fseek(database, location, SEEK_SET);
 		off_t redirectLocation;

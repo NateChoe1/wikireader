@@ -118,9 +118,7 @@ int main(int argc, char **argv) {
 						articleCount = countArticles(index);
 						break;
 					case SEARCH_WIN:
-						if (enterSearch(database, index))
-							continue;
-						break;
+						enterSearch(database, index);
 				}
 				break;
 		}
