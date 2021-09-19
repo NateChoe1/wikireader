@@ -1,3 +1,5 @@
+//Everything to do with the search menu
+
 #include <fcntl.h>
 #include <curses.h>
 #include <string.h>
@@ -22,6 +24,7 @@ Escape escapes[] = {
 	{"quot", '"'},
 	{"lt", '<'},
 	{"gt", '>'},
+	{"nbsp", ' '},
 };
 
 static off_t searchForArticle(FILE *database, FILE *index, char *search) {
@@ -80,6 +83,30 @@ char showPage(FILE *content) {
 	keypad(stdscr, true);
 }
 
+void sanitize(FILE *input, FILE *output) {
+	for (;;) {
+		int c = fgetc(input);
+		switch (c) {
+			case '<': case EOF:
+				fflush(output);
+				return;
+			case '&':
+				char special[MAX_SPECIAL];
+				readTillChar(input, special, MAX_SPECIAL, ';', false);
+				for (int i = 0; i < sizeof(escapes) / sizeof(escapes[0]); i++) {
+					if (strcmp(special, escapes[i].verbose) == 0) {
+						fputc(escapes[i].value, output);
+						break;
+					}
+				}
+				break;
+			default:
+				fputc(c, output);
+				break;
+		}
+	}
+}
+
 char enterSearch(FILE *database, FILE *index) {
 	clear();
 	echo();
@@ -127,29 +154,9 @@ noRedirects:
 	FILE *content = tmpfile();
 
 	fseek(database, location, SEEK_SET);
-	off_t articleLocation = searchForTag(database, "text");
-	for (;;) {
-		int c = fgetc(database);
-		switch (c) {
-			case '<': case EOF:
-				goto wroteArticle;
-			case '&':
-				char special[MAX_SPECIAL];
-				readTillChar(database, special, MAX_SPECIAL, ';', false);
-				for (int i = 0; i < sizeof(escapes) / sizeof(escapes[0]); i++)
-					if (strcmp(special, escapes[i].verbose) == 0) {
-						fputc(escapes[i].value, content);
-						break;
-					}
-				break;
-			default:
-				fputc(c, content);
-				break;
-		}
-	}
-wroteArticle:
+	searchForTag(database, "text");
+	sanitize(database, content);
 
-	fflush(content);
 	showPage(content);
 	fclose(content);
 

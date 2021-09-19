@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <curses.h>
+#include <sys/signal.h>
 
 #include "lookup.h"
 #include "search.h"
@@ -53,10 +54,19 @@ long countArticles(FILE *index) {
 	return ftell(index) / 8;
 }
 
+void exitCleanly() {
+	endwin();
+	exit(EXIT_SUCCESS);
+}
+
 int main(int argc, char **argv) {
 	if (argc < 3) {
 		puts("Usage: wikireader [database file] [index file]");
 		exit(EXIT_SUCCESS);
+	}
+	if (signal(SIGINT, exitCleanly) == SIG_ERR) {
+		fprintf(stderr, "Couldn't trap exit signal\n");
+		exit(EXIT_FAILURE);
 	}
 
 	FILE *database = fopen(argv[1], "r");
@@ -116,6 +126,4 @@ int main(int argc, char **argv) {
 		}
 		redrawSelection(options, selectedOption);
 	}
-
-	endwin();
 }
