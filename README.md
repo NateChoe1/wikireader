@@ -28,4 +28,4 @@ wikireader [wikipedia database download] [index]
 
 The index file can be created in Wikireader, if you don't have one already, just put in a file name that you'd like an index file to go to.
 
-## NOTE: This is not the same index file as can be downloaded with the database download, this is a custom format.
+**NOTE: This is not the same index file as can be downloaded with the database download, this is a custom format.**
