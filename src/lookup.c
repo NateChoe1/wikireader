@@ -32,9 +32,12 @@ FILE *createLookup(FILE *database, char *path) {
 		}
 		pages[pagesSeen].offset = pos;
 
-		searchForTag(database, "title");
+		if (searchForTag(database, "title") < 0)
+			break;
 		readTillChar(database, pages[pagesSeen].title, TITLE_MAX_LENGTH,
 				'<', false);
+		for (int i = 0; pages[pagesSeen].title[i]; i++)
+			pages[pagesSeen].title[i] = tolower(pages[pagesSeen].title[i]);
 
 		if (pagesSeen % 100000 == 0) {
 			char buffer[STATUS_MAX_LENGTH];

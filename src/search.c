@@ -1,6 +1,7 @@
 //Everything to do with the search menu
 
 #include <fcntl.h>
+#include <ctype.h>
 #include <curses.h>
 #include <string.h>
 #include <stdlib.h>
@@ -11,9 +12,15 @@
 #include "search.h"
 #include "lookup.h"
 
-#define MAX_SEARCH 257
+#define MAX_SEARCH TITLE_MAX_LENGTH
+
+static void stringToLower(char *string) {
+	for (int i = 0; string[i]; i++)
+		string[i] = tolower(string[i]);
+}
 
 static off_t searchForArticle(FILE *database, FILE *index, char *search) {
+	stringToLower(search);
 	fseek(index, 0, SEEK_END);
 	long low = 0;
 	long high = ftell(index) / sizeof(off_t);
@@ -34,6 +41,8 @@ static off_t searchForArticle(FILE *database, FILE *index, char *search) {
 		searchForTag(database, "title");
 		readTillChar(database, title, MAX_SEARCH, '<', false);
 		//get the title
+
+		stringToLower(title);
 
 		int comp = strcmp(search, title);
 		if (comp < 0)
