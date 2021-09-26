@@ -19,7 +19,7 @@ static void stringToLower(char *string) {
 		string[i] = tolower(string[i]);
 }
 
-static int64_t searchForArticle(FILE *database, FILE *index, char *search) {
+int64_t searchForArticle(FILE *database, FILE *index, char *search) {
 	stringToLower(search);
 	fseek(index, 0, SEEK_END);
 	long low = 0;
@@ -59,7 +59,47 @@ static int64_t searchForArticle(FILE *database, FILE *index, char *search) {
 	}
 }
 
-char showPage(FILE *content) {
+static int64_t followRedirects(FILE *database, FILE *index) {
+	int64_t currentLocation = ftell(database);
+	for (;;) {
+		int64_t redirectTag;
+		for (;;) {
+			char *tag = nextTag(database, &redirectTag);
+			if (strcmp(tag, "/page") == 0) {
+				free(tag);
+				fseek(database, currentLocation, SEEK_SET);
+				return currentLocation;
+			}
+			if (strcmp(tag, "redirect") == 0) {
+				free(tag);
+				break;
+			}
+			if (tag == NULL) {
+				free(tag);
+				return -1;
+			}
+			free(tag);
+		}
+
+		fseek(database, redirectTag, SEEK_SET);
+
+		for (;;) {
+			int c = fgetc(database);
+			if (c == '"')
+				break;
+			if (c == EOF)
+				return -1;
+		}
+
+		char newTitle[MAX_SEARCH];
+		readTillChar(database, newTitle, MAX_SEARCH, '"', false);
+
+		currentLocation = searchForArticle(database, index, newTitle);
+		fseek(database, currentLocation, SEEK_SET);
+	}
+}
+
+static char showPage(FILE *content) {
 	int pid = fork();
 	if (pid == 0) {
 		int fd = fileno(content);
@@ -78,7 +118,7 @@ char showPage(FILE *content) {
 	keypad(stdscr, true);
 }
 
-void sanitize(FILE *input, FILE *output) {
+static void sanitize(FILE *input, FILE *output) {
 	sanitizeAmpersands(input, output);
 	//This useless function call is to allow for extra things like math to be
 	//added without having to do more organization later.
@@ -100,36 +140,13 @@ char enterSearch(FILE *database, FILE *index) {
 		curs_set(0);
 		return 1;
 	}
-	for (;;) {
-		fseek(database, location, SEEK_SET);
-		int64_t redirectLocation;
-		for (;;) {
-			char *tag = nextTag(database, &redirectLocation);
-			if (strcmp(tag, "/page") == 0) {
-				free(tag);
-				goto noRedirects;
-			}
-			if (strcmp(tag, "redirect") == 0) {
-				free(tag);
-				break;
-			}
-			free(tag);
-		}
-		//detect redirects
-
-		fseek(database, redirectLocation, SEEK_SET);
-		int c = fgetc(database);
-		while (c != '"' && c != EOF)
-			c = fgetc(database);
-		if (c != EOF)
-			readTillChar(database, search, MAX_SEARCH, '"', false);
-		//if we should redirect, get the new redirect location
-		else
-			return 1;
-
-		location = searchForArticle(database, index, search);
+	fseek(database, location, SEEK_SET);
+	location = followRedirects(database, index);
+	if (location == -1) {
+		noecho();
+		curs_set(0);
+		return 1;
 	}
-noRedirects:
 
 	FILE *content = tmpfile();
 
