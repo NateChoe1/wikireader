@@ -23,7 +23,7 @@ FILE *createLookup(FILE *database, char *path) {
 	clear();
 
 	for (pagesSeen = 0;; pagesSeen++) {
-		off_t pos = searchForTag(database, "page");
+		int64_t pos = searchForTag(database, "page");
 		if (pos == -1)
 			break;
 		if (pagesSeen >= allocatedPages) {
@@ -63,6 +63,6 @@ FILE *createLookup(FILE *database, char *path) {
 		return NULL;
 
 	for (long i = 0; i < pagesSeen; i++)
-		fwrite(&pages[i].offset, sizeof(off_t), 1, lookup);
+		fwrite(&pages[i].offset, sizeof(int64_t), 1, lookup);
 	return lookup;
 }

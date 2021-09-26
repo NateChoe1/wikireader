@@ -19,18 +19,18 @@ static void stringToLower(char *string) {
 		string[i] = tolower(string[i]);
 }
 
-static off_t searchForArticle(FILE *database, FILE *index, char *search) {
+static int64_t searchForArticle(FILE *database, FILE *index, char *search) {
 	stringToLower(search);
 	fseek(index, 0, SEEK_END);
 	long low = 0;
-	long high = ftell(index) / sizeof(off_t);
+	long high = ftell(index) / sizeof(int64_t);
 
 	for (;;) {
 		long mid = (low + high) / 2;
 		char title[MAX_SEARCH];
 		
-		fseek(index, mid * sizeof(off_t), SEEK_SET);
-		off_t location;
+		fseek(index, mid * sizeof(int64_t), SEEK_SET);
+		int64_t location;
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-result"
 		fread(&location, sizeof(location), 1, index);
@@ -94,7 +94,7 @@ char enterSearch(FILE *database, FILE *index) {
 	char search[MAX_SEARCH];
 	mvgetnstr(LINES / 3 * 2, COLS / 3, search, MAX_SEARCH - 1);
 
-	off_t location = searchForArticle(database, index, search);
+	int64_t location = searchForArticle(database, index, search);
 	if (location == -1) {
 		noecho();
 		curs_set(0);
@@ -102,7 +102,7 @@ char enterSearch(FILE *database, FILE *index) {
 	}
 	for (;;) {
 		fseek(database, location, SEEK_SET);
-		off_t redirectLocation;
+		int64_t redirectLocation;
 		for (;;) {
 			char *tag = nextTag(database, &redirectLocation);
 			if (strcmp(tag, "/page") == 0) {

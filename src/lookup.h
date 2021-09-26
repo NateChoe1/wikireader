@@ -4,5 +4,5 @@ FILE *createLookup(FILE *database, char *path);
 
 typedef struct {
 	char title[TITLE_MAX_LENGTH];
-	off_t offset;
+	int64_t offset;
 } Page;

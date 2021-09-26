@@ -36,7 +36,7 @@ void readTillChar(FILE *file, char *buffer, int max, char end, bool stopWhite) {
 	buffer[max - 1] = '\0';
 }
 
-char *nextTag(FILE *file, off_t *locationReturn) {
+char *nextTag(FILE *file, int64_t *locationReturn) {
 	for (;;) {
 		int c = fgetc(file);
 		switch (c) {
@@ -73,9 +73,9 @@ getTag:
 	}
 }
 
-off_t searchForTag(FILE *file, char *search) {
+int64_t searchForTag(FILE *file, char *search) {
 	for (;;) {
-		off_t possibility;
+		int64_t possibility;
 		char *tag = nextTag(file, &possibility);
 		if (tag == NULL)
 			return -1;
