@@ -29,3 +29,6 @@ wikireader [wikipedia database download] [index]
 The index file can be created in Wikireader, if you don't have one already, just put in a file name that you'd like an index file to go to.
 
 **NOTE: This is not the same index file as can be downloaded with the database download, this is a custom format.**
+
+
+To search for an article, simply type in the article name. Various possible completions will show up. Simply arrow over to the one you wish to view, and press the right arrow.
