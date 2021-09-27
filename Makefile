@@ -1,7 +1,7 @@
 SRC = $(shell find -name "*.c")
 OBJ = $(shell echo $(SRC) | sed "s/src/work/g" | sed "s/\.c/.o/g")
 LIBS = $(shell ncurses6-config --libs)
-CFLAGS := -O2
+CFLAGS := -ggdb
 CFLAGS += $(shell ncurses6-config --cflags)
 
 build/wikireader: $(OBJ)
