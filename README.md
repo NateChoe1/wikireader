@@ -3,7 +3,7 @@
 1. Get the Wikipedia database at
 https://meta.wikimedia.org/wiki/Data_dump_torrents#English_Wikipedia
 
-Unless you have 100 GB disk space available, try Simple English Wikipedia.
+Unless you have 65 GB disk space available, try Simple English Wikipedia.
 
 2. Run the following to decompress the file.
 
