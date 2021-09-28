@@ -11,7 +11,7 @@ Unless you have 65 GB disk space available, try Simple English Wikipedia.
 bzip2 -d [the compressed db file you downloaded on step #2]
 ```
 
-This takes a long time, potentially more several. If you'd like to see the progress, you can run something like:
+This takes a long time, potentially several minutes. If you'd like to see the progress, you can run something like:
 
 ```
 while : ; do wc -c [name of xml file being decompressed] ; sleep 1 ; done
