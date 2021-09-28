@@ -24,7 +24,7 @@ void getTitle(FILE *database, char *ret) {
 }
 
 int64_t searchForArticle(FILE *database, FILE *index, char *search,
-		bool returnFirst, int64_t *indexLocation) {
+		uint8_t args, int64_t *indexLocation) {
 	stringToLower(search);
 	fseek(index, 0, SEEK_END);
 	long low = 0;
@@ -60,7 +60,7 @@ int64_t searchForArticle(FILE *database, FILE *index, char *search,
 			low = mid;
 		//binary search
 		if (high - 1 <= low) {
-			if (returnFirst)
+			if (args & RETURN_FIRST)
 				if (comp < 0)
 					return high;
 				else
@@ -107,7 +107,7 @@ int64_t followRedirects(FILE *database, FILE *index) {
 		readTillChar(database, newTitle, TITLE_MAX_LENGTH, '"', false);
 
 		currentLocation = searchForArticle(database, index, newTitle,
-				false, NULL);
+				0, NULL);
 		fseek(database, currentLocation, SEEK_SET);
 	}
 }
@@ -148,13 +148,15 @@ char enterSearch(FILE *database, FILE *index) {
 	//-1 means that you're entering the search query
 	int64_t location;
 	int64_t indexLocation = -1;
+	int scrollPosition = 0;
 	noraw();
 	cbreak();
 	//setting cbreak because KEY_BACKSPACE doesn't work in raw mode.
 
 	for (;;) {
 		if (indexLocation == -1)
-			searchForArticle(database, index, search, true, &indexLocation);
+			searchForArticle(database, index, search,
+					RETURN_FIRST, &indexLocation);
 		//ideally, we don't search on every single key press, so every time the
 		//search query changes, we just store that as indexLocation being -1.
 
@@ -166,7 +168,7 @@ char enterSearch(FILE *database, FILE *index) {
 
 		int drawingArticle;
 		if (searchLen > 0) {
-			fseek(index, indexLocation, SEEK_SET);
+			fseek(index, indexLocation + scrollPosition, SEEK_SET);
 			int currentY = 1;
 			for (drawingArticle = 0;; drawingArticle++) {
 				int64_t thisLocation;
@@ -211,11 +213,19 @@ char enterSearch(FILE *database, FILE *index) {
 				 if (--selectedArticle < 0)
 					 selectedArticle = 0;
 				 break;
+			 case 'e' & 31:
+				 scrollPosition += sizeof(int64_t);
+				 break;
+			 case 'y' & 31:
+				 scrollPosition -= sizeof(int64_t);
+				 break;
 			 case KEY_RIGHT: case KEY_ENTER: case '\n':
 				 goto gotArticle;
 			 default:
 				 search[searchLen++] = (char) c;
 				 indexLocation = -1;
+				 scrollPosition = 0;
+				 selectedArticle = -1;
 				 break;
 		}
 		search[searchLen] = '\0';
