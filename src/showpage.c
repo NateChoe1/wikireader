@@ -4,62 +4,32 @@
 #include "curses.h"
 #include "showpage.h"
 
-void redrawPage(FILE *file, int currentLine, int curY, int curX) {
+typedef struct {
+	char **content;
+	int allocatedLines;
+	int lines;
+} Article;
+
+void redrawPage(Article article, int start, int curY, int curX) {
 	int curXPos, curYPos;
-	int fromLine = 0;
 	clear();
 	move(0, 0);
-	for (;;) {
-		int c = fgetc(file);
+	for (int line = start; line < article.lines; line++) {
 		int x, y;
-		getyx(stdscr, y, x);
-		if (fromLine == curX && currentLine == curY) {
-			curXPos = x;
-			curYPos = y;
-		}
-		if (y >= LINES)
-			goto wroteLines;
 
-		switch (c) {
-			case '\n':
-				move(y + 1, 0);
-				attrset(A_NORMAL);
-				currentLine++;
-				fromLine = 0;
-				break;
-			case 0:
-				for (;;) {
-					int attribute = fgetc(file);
-					switch (attribute) {
-						case 0:
-							goto setAttributes;
-						case 1:
-							attron(A_STANDOUT);
-							break;
-						case 2:
-							attron(A_UNDERLINE);
-							break;
-						case 3:
-							attrset(A_NORMAL);
-							break;
-					}
-				}
-				/*
-				 * \x00 initiates an escape sequence
-				 * \x00 means stop getting attributes
-				 * \x01 means bold text
-				 * \x02 means underlined text
-				 * \x03 means reset (note, codes are reset on each newline)
-				 * */
-setAttributes:
-				break;
-			case EOF:
+		for (int i = 0; article.content[line][i]; i++) {
+			getyx(stdscr, y, x);
+			if (y >= LINES)
 				goto wroteLines;
-			default:
-				fromLine++;
-				addch(c);
+			if (i == curX && line == curY) {
+				curXPos = x;
+				curYPos = y;
+			}
+
+			addch(article.content[line][i]);
 		}
-		
+		move(y + 1, 0);
+		attrset(A_NORMAL);
 	}
 wroteLines:
 
@@ -70,35 +40,66 @@ wroteLines:
 void showPage(FILE *file) {
 	register int x = 0;
 	register int y = 0;
-	int ch;
 	register int64_t currentPosition = 0;
+
+	fseek(file, 0, SEEK_SET);
+	Article article;
+	article.allocatedLines = 20;
+	article.lines = 0;
+	article.content = malloc(article.allocatedLines * sizeof(char *));
 	for (;;) {
-		fseek(file, currentPosition, SEEK_SET);
-		redrawPage(file, 0, y, x);
+		int allocatedLength = 20;
+		int lineLength = 0;
+		char *currentLine = malloc(allocatedLength);
+		for (;;) {
+			int c = fgetc(file);
+			if (lineLength == allocatedLength) {
+				allocatedLength *= 2;
+				currentLine = realloc(currentLine, allocatedLength);
+			}
+			switch (c) {
+				case EOF:
+					currentLine[lineLength] = '\0';
+					article.content[article.lines++] = currentLine;
+					goto gotArticle;
+				case '\n':
+					currentLine[lineLength] = '\0';
+					goto gotLine;
+				default:
+					currentLine[lineLength++] = c;
+					break;
+			}
+		}
+gotLine:
+		if (article.lines >= article.allocatedLines) {
+			article.allocatedLines *= 2;
+			article.content = realloc(article.content,
+						article.allocatedLines * sizeof(char *));
+		}
+		article.content[article.lines++] = currentLine;
+	}
+
+gotArticle:
+
+	int scrollPosition = 0;
+
+	for (;;) {
+		redrawPage(article, scrollPosition, y, x);
 		int c = wgetch(stdscr);
+		int ch;
 		switch (c) {
-			case KEY_DOWN:
+			case KEY_DOWN: case 'j':
 				y++;
 				break;
-			case KEY_UP:
+			case KEY_UP: case 'k':
 				y--;
 				break;
 			case 'e' & 31:
-				fseek(file, currentPosition, SEEK_SET);
-				ch = fgetc(file);
-				while (ch != '\n' && ch != EOF)
-					ch = fgetc(file);
-				currentPosition = ftell(file);
+				scrollPosition++;
 				break;
 			case 'y' & 31:
-				fseek(file, currentPosition, SEEK_SET);
-				fseek(file, -2, SEEK_CUR);
-				ch = fgetc(file);
-				while (ch != '\n') {
-					fseek(file, -2, SEEK_CUR);
-					ch = fgetc(file);
-				}
-				currentPosition = ftell(file);
+				if (--scrollPosition < 0)
+					scrollPosition = 0;
 				break;
 			case 'q': case 'c' & 31:
 				return;
