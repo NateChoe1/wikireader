@@ -22,7 +22,7 @@ void getTitle(FILE *database, char *ret) {
 	readTillChar(database, ret, TITLE_MAX_LENGTH, '<', false);
 }
 
-int istrcmp(char *string1, char *string2) {
+static int istrcmp(char *string1, char *string2) {
 //case insensitive string comparison
 	for (register int i = 0;; i++) {
 		register char c1 = tolower(string1[i]);
@@ -34,60 +34,56 @@ int istrcmp(char *string1, char *string2) {
 	}
 }
 
-int64_t searchForArticle(FILE *database, FILE *index, char *search,
-		uint8_t args, int64_t *indexLocation) {
-	//args is the bitwise or of args defined in search.h
+static int64_t findFirst(FILE *database, FILE *index, char *search) {
 	fseek(index, 0, SEEK_END);
 	register long low = 0;
 	register long high = ftell(index) / sizeof(int64_t);
 
-	for (;;) {
+	while (low + 1 < high) {
 		register long mid = (low + high) / 2;
-		char title[TITLE_MAX_LENGTH];
-		
-		int64_t seekLocation = mid * sizeof(int64_t);
-		if (indexLocation != NULL)
-			*indexLocation = seekLocation;
-		fseek(index, seekLocation, SEEK_SET);
+		fseek(index, mid * sizeof(int64_t), SEEK_SET);
+
 		int64_t location;
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-result"
 		fread(&location, sizeof(location), 1, index);
-#pragma GCC diagnostic pop
-		//get the location specified in the index
-
 		fseek(database, location, SEEK_SET);
-		getTitle(database, title);
-		//get the title
 
-		int comp = istrcmp(search, title);
-		if (comp < 0)
-			high = mid;
-		else if (!(args & EXACT_MATCH) && comp == 0)
-			return location;
-		else
+		char title[TITLE_MAX_LENGTH];
+		getTitle(database, title);
+		int cmp = istrcmp(search, title);
+		if (cmp >= 0)
 			low = mid;
-		//binary search
-		if (high - 1 <= low) {
-			if (args & RETURN_FIRST)
-				return high;
-			if (args & EXACT_MATCH) {
-				for (;;) {
-					fseek(index, high * sizeof(int64_t), SEEK_SET);
-					fread(&location, sizeof(location), 1, index);
-					fseek(database, location, SEEK_SET);
-					getTitle(database, title);
-					if (istrcmp(search, title))
-						return -1;
-					if (strcmp(search, title) == 0)
-						return high;
-					high++;
-				}
-			}
-			else
+		else
+			high = mid;
+	}
+	return high;
+}
+
+int64_t searchForArticle(FILE *database, FILE *index, char *search,
+		uint8_t args, int64_t *indexLocation) {
+	int64_t firstArticle = findFirst(database, index, search);
+	if (args & RETURN_FIRST)
+		goto finish;
+	else {
+		fseek(index, firstArticle * sizeof(int64_t), SEEK_SET);
+		for (;;) {
+			fread(&firstArticle, sizeof(int64_t), 1, index);
+			fseek(database, firstArticle, SEEK_SET);
+			char title[TITLE_MAX_LENGTH];
+			getTitle(database, title);
+			if (istrcmp(title, search))
 				return -1;
+			if (strcmp(title, search) == 0)
+				goto finish;
 		}
 	}
+
+finish:
+	int64_t ret;
+	fseek(index, firstArticle * sizeof(int64_t), SEEK_SET);
+	fread(&ret, sizeof(int64_t), 1, database);
+	if (indexLocation != NULL)
+		*indexLocation = firstArticle * sizeof(int64_t);
+	return ret;
 }
 
 int64_t followRedirects(FILE *database, FILE *index) {
@@ -126,7 +122,7 @@ int64_t followRedirects(FILE *database, FILE *index) {
 		readTillChar(database, newTitle, TITLE_MAX_LENGTH, '"', false);
 
 		currentLocation = searchForArticle(database, index, newTitle,
-				EXACT_MATCH, NULL);
+				0, NULL);
 		fseek(database, currentLocation, SEEK_SET);
 	}
 }
@@ -162,9 +158,10 @@ char enterSearch(FILE *database, FILE *index) {
 	//setting cbreak because KEY_BACKSPACE doesn't work in raw mode.
 
 	for (;;) {
-		if (indexLocation == -1)
+		if (indexLocation == -1) {
 			searchForArticle(database, index, search,
 					RETURN_FIRST, &indexLocation);
+		}
 		//ideally, we don't search on every single key press, so every time the
 		//search query changes, we just store that as indexLocation being -1.
 
