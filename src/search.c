@@ -1,5 +1,7 @@
 //Everything to do with the search menu
 
+#pragma GCC diagnostic ignored "-Wunused-result"
+
 #include <fcntl.h>
 #include <ctype.h>
 #include <curses.h>
