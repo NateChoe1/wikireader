@@ -76,8 +76,10 @@ int main(int argc, char **argv) {
 	curs_set(0);
 	keypad(stdscr, true);
 
-	if (has_colors())
+	if (has_colors()) {
 		init_pair(SPECIAL_PAIR, COLOR_GREEN, COLOR_BLACK);
+		init_pair(LINK_PAIR, COLOR_CYAN, COLOR_BLACK);
+	}
 
 	WINDOW *options[OPTION_COUNT] = {
 		[SEARCH_WIN] = newwin(3, COLS / 2, LINES / 4 * 3 - 2, COLS / 4),

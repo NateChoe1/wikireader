@@ -1,0 +1,1 @@
+void showPage(FILE *file);

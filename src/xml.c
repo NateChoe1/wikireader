@@ -91,7 +91,8 @@ void sanitizeAmpersands(FILE *input, FILE *output) {
 	for (;;) {
 		int c = fgetc(input);
 		switch (c) {
-			case '<':
+			case '<': case EOF:
+				fflush(output);
 				return;
 			case '&':
 				char special[MAX_SPECIAL_LEN];

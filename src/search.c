@@ -5,13 +5,12 @@
 #include <curses.h>
 #include <string.h>
 #include <stdlib.h>
-#include <unistd.h>
-#include <sys/wait.h>
 
 #include "xml.h"
 #include "curses.h"
 #include "search.h"
 #include "lookup.h"
+#include "showpage.h"
 
 static void stringToLower(char *string) {
 	for (int i = 0; string[i]; i++)
@@ -23,15 +22,27 @@ void getTitle(FILE *database, char *ret) {
 	readTillChar(database, ret, TITLE_MAX_LENGTH, '<', false);
 }
 
+int istrcmp(char *string1, char *string2) {
+//case insensitive string comparison
+	for (register int i = 0;; i++) {
+		register char c1 = tolower(string1[i]);
+		register char c2 = tolower(string2[i]);
+		if (c1 != c2)
+			return c1 - c2;
+		if (c1 == '\0')
+			return 0;
+	}
+}
+
 int64_t searchForArticle(FILE *database, FILE *index, char *search,
 		uint8_t args, int64_t *indexLocation) {
-	stringToLower(search);
+	//args is the bitwise or of args defined in search.h
 	fseek(index, 0, SEEK_END);
-	long low = 0;
-	long high = ftell(index) / sizeof(int64_t);
+	register long low = 0;
+	register long high = ftell(index) / sizeof(int64_t);
 
 	for (;;) {
-		long mid = (low + high) / 2;
+		register long mid = (low + high) / 2;
 		char title[TITLE_MAX_LENGTH];
 		
 		int64_t seekLocation = mid * sizeof(int64_t);
@@ -49,22 +60,30 @@ int64_t searchForArticle(FILE *database, FILE *index, char *search,
 		getTitle(database, title);
 		//get the title
 
-		stringToLower(title);
-
-		int comp = strcmp(search, title);
+		int comp = istrcmp(search, title);
 		if (comp < 0)
 			high = mid;
-		else if (comp == 0)
+		else if (!(args & EXACT_MATCH) && comp == 0)
 			return location;
 		else
 			low = mid;
 		//binary search
 		if (high - 1 <= low) {
 			if (args & RETURN_FIRST)
-				if (comp < 0)
-					return high;
-				else
-					return low;
+				return high;
+			if (args & EXACT_MATCH) {
+				for (;;) {
+					fseek(index, high * sizeof(int64_t), SEEK_SET);
+					fread(&location, sizeof(location), 1, index);
+					fseek(database, location, SEEK_SET);
+					getTitle(database, title);
+					if (istrcmp(search, title))
+						return -1;
+					if (strcmp(search, title) == 0)
+						return high;
+					high++;
+				}
+			}
 			else
 				return -1;
 		}
@@ -107,34 +126,24 @@ int64_t followRedirects(FILE *database, FILE *index) {
 		readTillChar(database, newTitle, TITLE_MAX_LENGTH, '"', false);
 
 		currentLocation = searchForArticle(database, index, newTitle,
-				0, NULL);
+				EXACT_MATCH, NULL);
 		fseek(database, currentLocation, SEEK_SET);
 	}
 }
 
-static char showPage(FILE *content) {
-	int pid = fork();
-	if (pid == 0) {
-		int fd = fileno(content);
-		char path[20];
-		sprintf(path, "/dev/fd/%d", fd);
-		execlp("less", "less", path, NULL);
-	}
-	if (pid > 0)
-		wait(&pid);
-	else
-		return 1;
-
-	raw();
-	noecho();
-	curs_set(0);
-	keypad(stdscr, true);
-}
-
 static void sanitize(FILE *input, FILE *output) {
+	/*
 	sanitizeAmpersands(input, output);
 	//This useless function call is to allow for extra things like math to be
 	//added without having to do more organization later.
+	*/
+	for (;;) {
+		int c = fgetc(input);
+		if (c == EOF || c == '<')
+			break;
+		fputc(c, output);
+	}
+	fflush(output);
 }
 
 char enterSearch(FILE *database, FILE *index) {
@@ -142,7 +151,6 @@ char enterSearch(FILE *database, FILE *index) {
 	curs_set(1);
 
 	char search[TITLE_MAX_LENGTH];
-	//mvgetnstr(LINES / 3 * 2, COLS / 3, search, TITLE_MAX_LENGTH);
 	int searchLen = 0;
 	int selectedArticle = -1;
 	//-1 means that you're entering the search query
