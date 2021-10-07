@@ -220,7 +220,8 @@ gotArticle:
 
 	FILE *content = tmpfile();
 
-	fseek(index, indexLocation + scrollPosition, SEEK_SET);
+	fseek(index, indexLocation + scrollPosition +
+			(selectedArticle * sizeof(int64_t)), SEEK_SET);
 	fread(&location, sizeof(location), 1, index);
 	fseek(database, location, SEEK_SET);
 	location = followRedirects(database, index);
