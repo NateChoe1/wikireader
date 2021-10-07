@@ -90,12 +90,12 @@ int64_t searchForTag(FILE *file, char *search) {
 void sanitizeAmpersands(FILE *input, FILE *output) {
 	for (;;) {
 		int c = fgetc(input);
+		char special[MAX_SPECIAL_LEN];
 		switch (c) {
 			case '<': case EOF:
 				fflush(output);
 				return;
 			case '&':
-				char special[MAX_SPECIAL_LEN];
 				readTillChar(input, special, sizeof(special), ';', false);
 				for (int i = 0; i < sizeof(escapes) / sizeof(escapes[0]); i++) {
 					if (strcmp(escapes[i].title, special) == 0) {

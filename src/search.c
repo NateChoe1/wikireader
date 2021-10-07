@@ -14,11 +14,6 @@
 #include "lookup.h"
 #include "showpage.h"
 
-static void stringToLower(char *string) {
-	for (int i = 0; string[i]; i++)
-		string[i] = tolower(string[i]);
-}
-
 void getTitle(FILE *database, char *ret) {
 	searchForTag(database, "title");
 	readTillChar(database, ret, TITLE_MAX_LENGTH, '<', false);
@@ -63,9 +58,7 @@ static int64_t findFirst(FILE *database, FILE *index, char *search) {
 int64_t searchForArticle(FILE *database, FILE *index, char *search,
 		uint8_t args, int64_t *indexLocation) {
 	int64_t firstArticle = findFirst(database, index, search);
-	if (args & RETURN_FIRST)
-		goto finish;
-	else {
+	if (!args & RETURN_FIRST) {
 		fseek(index, firstArticle * sizeof(int64_t), SEEK_SET);
 		for (;;) {
 			fread(&firstArticle, sizeof(int64_t), 1, index);
@@ -75,11 +68,10 @@ int64_t searchForArticle(FILE *database, FILE *index, char *search,
 			if (istrcmp(title, search))
 				return -1;
 			if (strcmp(title, search) == 0)
-				goto finish;
+				break;
 		}
 	}
 
-finish:
 	int64_t ret;
 	fseek(index, firstArticle * sizeof(int64_t), SEEK_SET);
 	fread(&ret, sizeof(int64_t), 1, database);
@@ -129,21 +121,6 @@ int64_t followRedirects(FILE *database, FILE *index) {
 	}
 }
 
-static void sanitize(FILE *input, FILE *output) {
-	/*
-	sanitizeAmpersands(input, output);
-	//This useless function call is to allow for extra things like math to be
-	//added without having to do more organization later.
-	*/
-	for (;;) {
-		int c = fgetc(input);
-		if (c == EOF || c == '<')
-			break;
-		fputc(c, output);
-	}
-	fflush(output);
-}
-
 char enterSearch(FILE *database, FILE *index) {
 	clear();
 	curs_set(1);
@@ -173,7 +150,7 @@ char enterSearch(FILE *database, FILE *index) {
 		addnstr(search, searchLen);
 		refresh();
 
-		int drawingArticle;
+		int drawingArticle = 0;
 		if (searchLen > 0) {
 			fseek(index, indexLocation + scrollPosition, SEEK_SET);
 			int currentY = 1;
@@ -243,11 +220,18 @@ gotArticle:
 
 	FILE *content = tmpfile();
 
+	fseek(index, indexLocation + scrollPosition, SEEK_SET);
+	fread(&location, sizeof(location), 1, index);
 	fseek(database, location, SEEK_SET);
 	location = followRedirects(database, index);
 	fseek(database, location, SEEK_SET);
 	searchForTag(database, "text");
-	sanitize(database, content);
+	for (;;) {
+		int c = fgetc(database);
+		if (c == '<')
+			break;
+		fputc(c, content);
+	}
 
 	showPage(content);
 	fclose(content);

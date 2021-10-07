@@ -40,7 +40,6 @@ wroteLines:
 void showPage(FILE *file) {
 	register int x = 0;
 	register int y = 0;
-	register int64_t currentPosition = 0;
 
 	fseek(file, 0, SEEK_SET);
 	Article article;
@@ -79,14 +78,13 @@ gotLine:
 		article.content[article.lines++] = currentLine;
 	}
 
-gotArticle:
+gotArticle:;
 
 	int scrollPosition = 0;
 
 	for (;;) {
 		redrawPage(article, scrollPosition, y, x);
 		int c = wgetch(stdscr);
-		int ch;
 		switch (c) {
 			case KEY_DOWN: case 'j':
 				y++;

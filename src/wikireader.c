@@ -65,9 +65,6 @@ int main(int argc, char **argv) {
 
 	FILE *database = fopen(argv[1], "r");
 	FILE *index = fopen(argv[2], "r");
-	long articleCount = 0;
-	if (index)
-		articleCount = countArticles(index);;
 
 	initscr();
 	start_color();
@@ -111,7 +108,6 @@ int main(int argc, char **argv) {
 							refresh();
 							break;
 						}
-						articleCount = countArticles(index);
 						break;
 					case SEARCH_WIN:
 						enterSearch(database, index);
