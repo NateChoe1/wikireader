@@ -63,6 +63,7 @@ int main(int argc, char **argv) {
 		exit(EXIT_SUCCESS);
 	}
 
+
 	FILE *database = fopen(argv[1], "r");
 	FILE *index = fopen(argv[2], "r");
 

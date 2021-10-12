@@ -74,7 +74,7 @@ int64_t searchForArticle(FILE *database, FILE *index, char *search,
 
 	int64_t ret;
 	fseek(index, firstArticle * sizeof(int64_t), SEEK_SET);
-	fread(&ret, sizeof(int64_t), 1, database);
+	fread(&ret, sizeof(ret), 1, index);
 	if (indexLocation != NULL)
 		*indexLocation = firstArticle * sizeof(int64_t);
 	return ret;
