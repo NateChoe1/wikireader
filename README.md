@@ -18,7 +18,7 @@ while : ; do wc -c [name of xml file being decompressed] ; sleep 1 ; done
 ```
 
 3. To compile, simply run the "make" command. This program should (!) run on all
-UNIX systems with the less command and ncurses.
+UNIX systems with ncurses.
 
 4. To run it, just type
 

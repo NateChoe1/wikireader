@@ -52,31 +52,35 @@ static int64_t findFirst(FILE *database, FILE *index, char *search) {
 		else
 			high = mid;
 	}
-	return high;
+	return low;
 }
 
 int64_t searchForArticle(FILE *database, FILE *index, char *search,
 		uint8_t args, int64_t *indexLocation) {
-	int64_t firstArticle = findFirst(database, index, search);
-	if (!args & RETURN_FIRST) {
-		fseek(index, firstArticle * sizeof(int64_t), SEEK_SET);
+	int64_t location = findFirst(database, index, search) * sizeof(int64_t);
+
+	if (!(args & RETURN_FIRST)) {
 		for (;;) {
-			fread(&firstArticle, sizeof(int64_t), 1, index);
-			fseek(database, firstArticle, SEEK_SET);
+			int64_t articleLocation;
+			fseek(index, location, SEEK_SET);
+			fread(&articleLocation, sizeof(int64_t), 1, index);
+			fseek(database, articleLocation, SEEK_SET);
 			char title[TITLE_MAX_LENGTH];
 			getTitle(database, title);
+			puts(title);
 			if (istrcmp(title, search))
 				return -1;
 			if (strcmp(title, search) == 0)
 				break;
 		}
+		location = ftell(index) - sizeof(int64_t);
 	}
 
-	int64_t ret;
-	fseek(index, firstArticle * sizeof(int64_t), SEEK_SET);
-	fread(&ret, sizeof(ret), 1, index);
 	if (indexLocation != NULL)
-		*indexLocation = firstArticle * sizeof(int64_t);
+		*indexLocation = location;
+	int64_t ret;
+	fseek(index, location, SEEK_SET);
+	fread(&ret, sizeof(ret), 1, index);
 	return ret;
 }
 
@@ -131,12 +135,12 @@ char enterSearch(FILE *database, FILE *index) {
 	//-1 means that you're entering the search query
 	int64_t location;
 	int64_t indexLocation = -1;
-	int scrollPosition = 0;
 	noraw();
 	cbreak();
 	//setting cbreak because KEY_BACKSPACE doesn't work in raw mode.
 
 	for (;;) {
+		search[searchLen] = '\0';
 		if (indexLocation == -1) {
 			searchForArticle(database, index, search,
 					RETURN_FIRST, &indexLocation);
@@ -152,7 +156,7 @@ char enterSearch(FILE *database, FILE *index) {
 
 		int drawingArticle = 0;
 		if (searchLen > 0) {
-			fseek(index, indexLocation + scrollPosition, SEEK_SET);
+			fseek(index, indexLocation, SEEK_SET);
 			int currentY = 1;
 			for (drawingArticle = 0;; drawingArticle++) {
 				int64_t thisLocation;
@@ -198,21 +202,19 @@ char enterSearch(FILE *database, FILE *index) {
 					 selectedArticle = 0;
 				 break;
 			 case 'e' & 31:
-				 scrollPosition += sizeof(int64_t);
+				 indexLocation += sizeof(int64_t);
 				 break;
 			 case 'y' & 31:
-				 scrollPosition -= sizeof(int64_t);
+				 indexLocation -= sizeof(int64_t);
 				 break;
 			 case KEY_RIGHT: case KEY_ENTER: case '\n':
 				 goto gotArticle;
 			 default:
 				 search[searchLen++] = (char) c;
 				 indexLocation = -1;
-				 scrollPosition = 0;
 				 selectedArticle = -1;
 				 break;
 		}
-		search[searchLen] = '\0';
 	}
 gotArticle:
 	nocbreak();
@@ -220,7 +222,7 @@ gotArticle:
 
 	FILE *content = tmpfile();
 
-	fseek(index, indexLocation + scrollPosition +
+	fseek(index, indexLocation +
 			(selectedArticle * sizeof(int64_t)), SEEK_SET);
 	fread(&location, sizeof(location), 1, index);
 	fseek(database, location, SEEK_SET);

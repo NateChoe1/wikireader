@@ -1,5 +1,6 @@
 #include <curses.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "curses.h"
 #include "showpage.h"
@@ -9,6 +10,18 @@ typedef struct {
 	int allocatedLines;
 	int lines;
 } Article;
+
+#define ESCAPE_MAX_LENGTH 9
+typedef struct {
+	char text[ESCAPE_MAX_LENGTH];
+	char c;
+} Escape;
+static Escape escapes[]  = {
+	{.text = "amp", .c = '&'},
+	{.text = "semi", .c = ';'},
+	{.text = "quot", .c = '\''},
+	{.text = "nbsp", .c = ' '},
+};
 
 void redrawPage(Article article, int start, int curY, int curX) {
 	int curXPos, curYPos;
@@ -64,6 +77,22 @@ void showPage(FILE *file) {
 				case '\n':
 					currentLine[lineLength] = '\0';
 					goto gotLine;
+				case '&': {
+					char escape[ESCAPE_MAX_LENGTH];
+					int escapeLength;
+					for (escapeLength = 0; escapeLength < ESCAPE_MAX_LENGTH;
+							escapeLength++) {
+						escape[escapeLength] = fgetc(file);
+						if (escape[escapeLength] == ';')
+							break;
+					}
+					for (int i = 0; i < sizeof(escapes) /
+							sizeof(escapes[0]); i++) {
+						if (strncmp(escape, escapes[i].text, escapeLength) == 0)
+							currentLine[lineLength++] = escapes[i].c;
+					}
+					break;
+				}
 				default:
 					currentLine[lineLength++] = c;
 					break;

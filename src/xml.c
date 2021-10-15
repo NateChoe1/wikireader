@@ -13,7 +13,7 @@ typedef struct {
 	char c;
 } Escape;
 
-Escape escapes[] = {
+static Escape escapes[] = {
 	{"amp", '&'},
 	{"semi", ';'},
 	{"quot", '"'},
