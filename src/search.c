@@ -127,6 +127,12 @@ int64_t followRedirects(FILE *database, FILE *index) {
 
 char enterSearch(FILE *database, FILE *index) {
 	clear();
+	if (database == NULL || index == NULL) {
+		//database == NULL should be redundant.
+		mvaddstr(LINES / 2, COLS / 2 - 32, "There seems to be an invalid file. Try creating the index first?");
+		getch();
+		return 1;
+	}
 	curs_set(1);
 
 	char search[TITLE_MAX_LENGTH];

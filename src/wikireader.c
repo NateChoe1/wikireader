@@ -64,6 +64,10 @@ int main(int argc, char **argv) {
 	}
 
 	FILE *database = fopen(argv[1], "r");
+	if (database == NULL) {
+		fprintf(stderr, "Couldn't open database file!\n");
+		exit(EXIT_FAILURE);
+	}
 	FILE *index = fopen(argv[2], "r");
 
 	initscr();
@@ -100,6 +104,8 @@ int main(int argc, char **argv) {
 			case KEY_ENTER: case '\n':
 				switch (selectedOption) {
 					case CREATE_WIN:
+						if (index != NULL)
+							fclose(index);
 						index = createLookup(database, argv[2]);
 						if (index == NULL) {
 							clear();
