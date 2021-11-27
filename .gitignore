@@ -1,3 +1,3 @@
 wikipedia/
-build/*
-work/*
+build/wikireader
+work/*.o
